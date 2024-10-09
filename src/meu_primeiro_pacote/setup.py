@@ -12,7 +12,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name +'/launch', ['launch/meu_primeiro_launch.py']),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools','scikit-learn','lidar_to_grid_map',],
     zip_safe=True,
     maintainer='root',
     maintainer_email='root@todo.todo',
@@ -26,6 +26,9 @@ setup(
             'publisher = meu_primeiro_pacote.publisher:main',
             'subscriber = meu_primeiro_pacote.subscriber:main',
             'r2d2 = meu_primeiro_pacote.r2d2:main',
+            'lidar = meu_primeiro_pacote.lidar:main',
+            'lidar_to_grid_map = meu_primeiro_pacote.lidar_to_grid_map:main',
+            'lidar_irl = meu_primeiro_pacote.lidar_irl:main',
         ],
     },
 )
