@@ -60,7 +60,7 @@ class R2D2(Node):
         angles = []
         distances = []
         for i in range (180):
-            distances.append(self.laser[i])
+            distances.append(round(self.laser[i],3))
         #angles = np.linspace(3*pi/2, -pi/2,360 ) + self.pose.orientation
         angles = np.linspace(0, 2*pi,360 )
         distances = np.array(distances)
@@ -74,29 +74,23 @@ class R2D2(Node):
         # Converta o quaternion para ângulos de Euler (roll, pitch, yaw)
         _,_, yaw = euler_from_quaternion(lista_orientacao)
 
+        yaw = round(yaw,4)
+
         # Converta o yaw de radianos para graus
         angulo_global = math.degrees(yaw) # yaw, angulo em radianos
+
+        angulo_global = round(angulo_global,4)
 
         # Ajuste para o intervalo de 0 a 360 graus
         #if angulo_global < 0:
         #    angulo_global += 360
         return angulo_global,yaw
 
-    def is_new_point(self,ox_val, oy_val, mapped_points):
-        """
-        Verifica se o ponto (ox_val, oy_val) já foi mapeado dentro do limiar de distância.
-        """
-        for (px, py) in mapped_points:
-            dist = np.sqrt((ox_val - px) ** 2 + (oy_val - py) ** 2)
-            if dist < dist_threshold:
-                # O ponto está muito próximo de um ponto já mapeado, então ignorar
-                return False
-        return True
 
     def mapa_global(self,dist,yaw,map1,ax2,fig):
         #Posição do robô no mapa global 
-        x = 10 + self.pose.position.x
-        y = 10 - self.pose.position.y
+        x = 10 + round(self.pose.position.x,3)
+        y = 10 - round(self.pose.position.y,3)
 
         ang = np.linspace(0, pi,180) # recrio os ângulos, só que dessa vez com os valores que o lidar realmente pega, para criar o mapa global sem um rastro vermelho
         ang += yaw # A leitura do lidar fica alinhada com o theta global do robô 
@@ -105,34 +99,9 @@ class R2D2(Node):
 
         ox = (np.sin(ang) * dist_filtered  + x ) * Escala 
         oy = (np.cos(ang) * dist_filtered  + y ) * Escala 
+        ox = np.round(ox, decimals=3) #arredonda os arrays
+        oy = np.round(oy, decimals=3)
 
-        # Filtra os pontos para evitar remapeamento incorreto
-        #global mapped_points
-        #filtered_ox = []
-        #filtered_oy = []
-
-        #for ox_val, oy_val in zip(ox, oy):
-        #    if self.is_new_point(ox_val, oy_val, mapped_points):
-        #    # Se o ponto é novo, adiciona ao mapa e à lista de pontos filtrados
-        #        mapped_points.add((ox_val, oy_val))  # Adiciona ao conjunto de pontos mapeados
-        #        filtered_ox.append(ox_val)
-        #        filtered_oy.append(oy_val)
-
-        # Converte listas de volta para arrays do NumPy para retorno
-        #filtered_ox = np.array(filtered_ox)
-        #filtered_oy = np.array(filtered_oy)
-
-        #xyreso = 0.125 #resolução do grid do mapa em metros
-        #pmap, minx, maxx, miny, maxy, xyreso = lg.generate_ray_casting_grid_map(oy, ox, xyreso, False)
-        #xyres = np.array(pmap).shape
-        ## Configurando o gráfico para usar o subplot ax2
-        #ax2.imshow(pmap)  # Salva o objeto de imagem retornado por imshow
-        #ax2.set_xticks(np.arange(-.5, xyres[1], 1), minor=True)
-        #ax2.set_yticks(np.arange(-.5, xyres[0], 1), minor=True)
-        #ax2.grid(True, which="minor", color="w", linewidth=.6, alpha=0.5)
-
-        # Adiciona barra de cores ao subplot ax2
-        #fig.colorbar(ax2.imshow(pmap, cmap="PiYG_r"), ax=ax2)
         #------------------------------------------------------------------------------
         #Ajustes para o plot de ocupação:
         rob_pos = [int(x*Escala),int(y*Escala)]
@@ -145,9 +114,11 @@ class R2D2(Node):
             line = lg.bresenham((rob_pos[1], rob_pos[0]), (int(oy_val),int(ox_val)))
             for l in line:
                 map1[l[0]][l[1]] = 1- (prob_clear*(1-map1[l[0]][l[1]]))/(prob_clear*(1-map1[l[0]][l[1]]) + prob_clear_but*map1[l[0]][l[1]])    #O robô só vai detectar o ponto (int(oy_val),int(ox_val)), o resto fica livre
+                map1[l[0]][l[1]] = round(map1[l[0]][l[1]],3)
             #self.get_logger().info(f'ox_val: {int(ox_val)} oy_val:{int(oy_val)}')
             map1[int(oy_val)][int(ox_val)] = (prob_not_clear*map1[l[0]][l[1]])/(prob_not_clear*map1[l[0]][l[1]] + prob_not_clear_but*(1-map1[l[0]][l[1]])) # Dupla leitura de obstáculo para compensar lá em cima que disse que não tinham obstáculos no caminho
             map1[int(oy_val)][int(ox_val)] = (prob_not_clear*map1[l[0]][l[1]])/(prob_not_clear*map1[l[0]][l[1]] + prob_not_clear_but*(1-map1[l[0]][l[1]]))
+            map1[int(oy_val)][int(ox_val)] = round(map1[int(oy_val)][int(ox_val)],3)
         #------------------------------------------------------------------------------
 
         return ox, oy, x, y
@@ -199,8 +170,6 @@ class R2D2(Node):
                 ax1.cla() # limpa o gráfico
                 ax1.axis("equal")
                 ax1.plot([oy, np.zeros(np.size(oy))], [ox, np.zeros(np.size(oy))],'r-') # lines from 0,0 to the
-                #bottom, top = plt.ylim()  # return the current ylim
-                #plt.ylim((top, bottom)) # rescale y axis, to match the grid orientation
                 ax1.grid(True)
 
                 #Pego o ângulo global
@@ -209,41 +178,21 @@ class R2D2(Node):
                 #Pego as posições dos pontos em que o lidar bateu
                 ox,oy,pos_x,pos_y = self.mapa_global(dist,angulo_global_rad,map1,ax2,fig)
 
-                #self.flood_fill((int(pos_x*Escala),int(pos_y*Escala)),map1)
-
                 #Plota o gráfico global
-                #ax2.axis("equal")
-
-                #------------------------------------------------------------------------------
-                #Ajustes para o plot de pontos vermelhos:
-                #ax2.plot(ox,oy, marker='o', linestyle='None', markersize=1,color='red')
-                #------------------------------------------------------------------------------                
+                #ax2.axis("equal")           
                 
                 #Desenha o movimento do robô no mapa
-                ax2.plot((10 + self.pose.position.x)*Escala,(10 - self.pose.position.y)*Escala, marker='o', linestyle='None', markersize=1,color='red')
+                ax2.plot(pos_x*Escala,pos_y*Escala, marker='o', linestyle='None', markersize=1,color='red')
 
                 ax2.grid(True)
                 ax2.imshow(map1)
                 #ax2.colorbar()
                 plt.pause(0.1)
                 
-                #map1 = np.ones((20*Escala, 20*Escala)) * 0.5
-
                 #Lei de controle do robô
                 
-                #if (self.laser[0]<1):
-                #    self.pub_cmd_vel.publish(self.girar_direita)
-                #elif (self.laser[0]>4):
-                #    self.pub_cmd_vel.publish(self.girar_esquerda)
-                #elif (self.laser[90]<1.3):
-                #    self.pub_cmd_vel.publish(self.girar_esquerda)
-                #else:
-                #    self.pub_cmd_vel.publish(self.ir_para_frente)                   
-                #self.pub_cmd_vel.publish(self.girar_direita)
-
                 #Imprime a posição geral do robô
-                self.get_logger().info(f'X: {self.pose.position.x} Y:{self.pose.position.y} Theta: {angulo_global}')
-                #self.get_logger().info(f'Map1[79][56]: {map1[79][56]}') # Ponto de obstáculo
+                self.get_logger().info(f'X: {round(self.pose.position.x,3)} Y:{round(self.pose.position.y,3)} Theta: {angulo_global}')
                 #self.get_logger().info(f'Map1[40][50]: {map1}') # Ponto livre
 
                 rclpy.spin_once(self)
